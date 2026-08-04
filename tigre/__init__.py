@@ -73,7 +73,7 @@ class Plugin(pwem.Plugin):
         installationCmd += ' cd tigreWrapper &&'
         
         # Installing tigre in the environment
-        installationCmd += ' conda create -y -n %s -c conda-forge -f tigreEnv.yml && ' % TIGRE_ENV_NAME
+        installationCmd += ' conda create -y -n %s -f tigreEnv.yml && ' % TIGRE_ENV_NAME
         installationCmd += ' cd .. && ' 
         installationCmd += ' cd TIGRE && '
         installationCmd += ' pip install . && '
