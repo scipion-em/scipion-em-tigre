@@ -333,20 +333,10 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
         for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
-            #self._insertFunctionStep(self.convertInputStep, tsId)
             self._insertFunctionStep(self.reconstructTomogramStep, tsId)
             self._insertFunctionStep(self.createOutputStep, tsId)
         self._insertFunctionStep(self.closeOutputSetsStep)
 
-
-    def convertInputStep(self, tsId):
-        # Considering swapXY is required to make tilt axis vertical
-        #TODO: Odd-even not checked
-        oddEvenFlag = False
-        if self.inputSetOfTiltSeries.get().hasOddEven() and self.processOddEven.get():
-            oddEvenFlag = True
-
-        super().convertInputStep(tsObjId, doSwap=True, oddEven=oddEvenFlag)
 
     def getReconstructionMethod(self):
 
@@ -355,8 +345,6 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
             recMethod = self.exactsMethod.get()
             args = ' --method %s ' % self.ALGORITHMS_EXACT[recMethod]
             args += ' --filter %s ' % self.FILTER_LIST[self.filter.get()]
-            #TODO: think the use of parkerweights
-            #args += ' --parker '
         elif family == self.FAMILY_GRADIENT:
             recMethod = self.gradientMethod.get()
             args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
@@ -426,12 +414,6 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
         fnAngles = os.path.join(tomoPath, tsId+'.tlt')
         ts.generateTltFile(fnAngles)
 
-        # Next lines are commented on purpose. Tigre allows an internal
-        # interpolation. In our hands it did not work, but the commented
-        # lines prepare the data to use it
-        # fnAngles = os.path.join(tomoPath, tsId+'.xmd')
-        # self.generateAlignmentFile(ts, fnAngles)
-
         firstItem = ts.getFirstItem()
         tmpPrefix = self._getTmpPath(tsId)
         fnTs = os.path.join(tmpPrefix, firstItem.parseFileName())
@@ -441,18 +423,33 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
 
         recMethod, args = self.getReconstructionMethod()
 
-        params = ' --tiltseries %s' % fnTs
-        params += ' --angles %s ' % fnAngles
-        params += ' --thickness %i ' % self.tomoThickness.get()
-        params += ' -o %s' % fullTomogramName
-        params += ' --normalize standard'
-        params += args
-        params += ' --gpu %s' % self.gpuList.get()
+
+        paramsTS = ' --tiltseries %s' % fnTs
+        otherParams += ' --angles %s ' % fnAngles
+        otherParams += ' --thickness %i ' % self.tomoThickness.get()
+        otherParams += ' --normalize standard'
+        otherParams += args
+        otherParams += ' --gpu %s' % self.gpuList.get()
+        paramsOut = ' -o %s' % fullTomogramName
+
 
         programTigre = '/home/tomo/tigreBin/tigre/tigre_reconstruction.py'
+        tigreArgs = paramsTS + otherParams + paramsOut
 
-        Plugin.runTigre(self, f' python3 {programTigre} ', params)
+        Plugin.runTigre(self, f' python3 {programTigre} ', tigreArgs)
 
+        if ts.hasOddEven() and self.processOddEven.get():
+            fnOdd = ts.getOddFileName()
+            paramsTS = ' --tiltseries %s' % fnOdd
+            paramsOut = ' -o %s' % os.path.join(tomoPath, tsId+EXT_MRC_ODD_NAME)
+            tigreArgs = paramsTS + otherParams
+            Plugin.runTigre(self, f' python3 {programTigre} ', tigreArgs)
+
+            fnEven = ts.getEvenFileName()
+            paramsTS = ' --tiltseries %s' % fnEven
+            paramsOut = ' -o %s' % os.path.join(tomoPath, tsId+EXT_MRC_EVEN_NAME)
+            tigreArgs = paramsTS + otherParams
+            Plugin.runTigre(self, f' python3 {programTigre} ', tigreArgs)
 
     def getOutputSetOfTomograms(self, inputSet, binning=1) -> SetOfTomograms:
 
@@ -472,6 +469,15 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
 
         return self.Tomograms
 
+    def setTomoOddEven(self, tsId: str, outTomo: Tomogram) -> None:
+        if self.doOddEven:
+            tomoPath = self._getExtraPath(tsId)
+            halfMapsList = [os.path.join(tomoPath, tsId+EXT_MRC_ODD_NAME),
+                            os.path.join(tomoPath, tsId+EXT_MRC_EVEN_NAME)]
+            outTomo.setHalfMaps(halfMapsList)
+        else:
+            outTomo.setHalfMaps([])
+
     def createOutputStep(self, tsId):
         ts = self.inputSetOfTiltSeries.get()[{'_tsId': tsId}]
         tsId = ts.getTsId()
@@ -483,6 +489,9 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
 
             newTomogram = Tomogram()
             newTomogram.setLocation(fullTomogramName)
+
+            if ts.hasOddEven() and self.processOddEven.get():
+                self.setTomoOddEven(tsId, newTomogram)
 
             newTomogram.setTsId(tsId)
             newTomogram.setSamplingRate(ts.getSamplingRate())
