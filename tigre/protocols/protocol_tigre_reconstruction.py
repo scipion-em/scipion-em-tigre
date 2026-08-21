@@ -386,25 +386,25 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
         else:
             return self.iter.get()
         
-    def generateAlignmentFile(self, ts, fnAngles):
-        mdAli = lib.MetaData()
-        for ti in ts:
-            newRow = md.Row()
-            tilt = ti.getTiltAngle()
-            rot, sx, sy = calculateRotationAngleAndShiftsFromTM(ti)
-            newRow.setValue(lib.MDL_ANGLE_TILT, tilt)
-            newRow.setValue(lib.MDL_ANGLE_ROT, rot)
-            newRow.setValue(lib.MDL_SHIFT_X, sx)
-            newRow.setValue(lib.MDL_SHIFT_Y, sy)
-            newRow.addToMd(mdAli)
-
-        mdAli.write(fnAngles)
+    # def generateAlignmentFile(self, ts, fnAngles):
+    #     mdAli = lib.MetaData()
+    #     for ti in ts:
+    #         newRow = md.Row()
+    #         tilt = ti.getTiltAngle()
+    #         rot, sx, sy = calculateRotationAngleAndShiftsFromTM(ti)
+    #         newRow.setValue(lib.MDL_ANGLE_TILT, tilt)
+    #         newRow.setValue(lib.MDL_ANGLE_ROT, rot)
+    #         newRow.setValue(lib.MDL_SHIFT_X, sx)
+    #         newRow.setValue(lib.MDL_SHIFT_Y, sy)
+    #         newRow.addToMd(mdAli)
+    #
+    #     mdAli.write(fnAngles)
 
 
     def reconstructTomogramStep(self, tsId):
-        '''
+        """
         This function computes the reconstructed tomogram
-        '''
+        """
         ts = self.inputSetOfTiltSeries.get()[{'_tsId': tsId}]
 
         #Defining the output folder
@@ -422,34 +422,35 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
         fullTomogramName = os.path.join(tomoPath, tsId+EXT_MRC)
 
         recMethod, args = self.getReconstructionMethod()
-
+        fnXf = self._getExtraPath(tsId,tsId+'.xf')
+        ts.writeXfFile(fnXf)
 
         paramsTS = ' --tiltseries %s' % fnTs
-        otherParams += ' --angles %s ' % fnAngles
+        otherParams = ' --angles %s ' % fnAngles
+        otherParams += ' --xf %s ' % fnXf
         otherParams += ' --thickness %i ' % self.tomoThickness.get()
-        otherParams += ' --normalize standard'
         otherParams += args
         otherParams += ' --gpu %s' % self.gpuList.get()
         paramsOut = ' -o %s' % fullTomogramName
 
 
-        programTigre = '/home/tomo/tigreBin/tigre/tigre_reconstruction.py'
-        tigreArgs = paramsTS + otherParams + paramsOut
+        programTigre = Plugin.getTigreProgram('tigre_reconstruction.py')
+        tigreArgs = programTigre + paramsTS + otherParams + paramsOut
 
-        Plugin.runTigre(self, f' python3 {programTigre} ', tigreArgs)
+        Plugin.runTigre(self, tigreArgs)
 
         if ts.hasOddEven() and self.processOddEven.get():
             fnOdd = ts.getOddFileName()
             paramsTS = ' --tiltseries %s' % fnOdd
             paramsOut = ' -o %s' % os.path.join(tomoPath, tsId+EXT_MRC_ODD_NAME)
-            tigreArgs = paramsTS + otherParams
-            Plugin.runTigre(self, f' python3 {programTigre} ', tigreArgs)
+            tigreArgs =  programTigre + paramsTS + otherParams + paramsOut
+            Plugin.runTigre(self, tigreArgs)
 
             fnEven = ts.getEvenFileName()
             paramsTS = ' --tiltseries %s' % fnEven
             paramsOut = ' -o %s' % os.path.join(tomoPath, tsId+EXT_MRC_EVEN_NAME)
-            tigreArgs = paramsTS + otherParams
-            Plugin.runTigre(self, f' python3 {programTigre} ', tigreArgs)
+            tigreArgs =  programTigre + paramsTS + otherParams + paramsOut
+            Plugin.runTigre(self, tigreArgs)
 
     def getOutputSetOfTomograms(self, inputSet, binning=1) -> SetOfTomograms:
 

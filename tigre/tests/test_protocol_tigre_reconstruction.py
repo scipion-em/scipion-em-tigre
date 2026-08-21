@@ -42,6 +42,7 @@ OUTPUT_TOMOGRAMS_NAME = "Tomograms"
 TS_03 = 'TS_03'
 TS_54 = 'TS_54'
 
+
 class TestTigreProtReconstruction(TestBaseCentralizedLayer):
     unbinnedSRate = DataSetRe4STATuto.unbinnedPixSize.value
     nTomos = 2
@@ -109,11 +110,11 @@ class TestTigreProtReconstruction(TestBaseCentralizedLayer):
         return outTsSet
 
     @classmethod
-    def runTigreReconstruction(cls, test: BaseTest, inputSetOfTiltSeries, **kwargs):
-        protTigre = test.newProtocol(ProtTigreReconstruction,
-                                     inputSetOfTiltSeries=inputSetOfTiltSeries,
-                                     **kwargs)
-        test.launchProtocol(protTigre)
+    def runTigreReconstruction(cls, inputSetOfTiltSeries, **kwargs):
+        protTigre = cls.newProtocol(ProtTigreReconstruction,
+                                    inputSetOfTiltSeries=inputSetOfTiltSeries,
+                                    **kwargs)
+        cls.launchProtocol(protTigre)
         return getattr(protTigre, OUTPUT_TOMOGRAMS_NAME, None)
 
     def testExactReconstruction(self):
@@ -121,76 +122,59 @@ class TestTigreProtReconstruction(TestBaseCentralizedLayer):
             for aidx, algorithm in enumerate(ProtTigreReconstruction.ALGORITHMS_EXACT):
                 label = algorithm + ' ' + appliedFilter
                 print(magentaStr(f"\n==> Reconstruction with {label}"))
-                tigreTomogram = self.runTigreReconstruction(self, objLabel=label,
-                                                       inputSetOfTiltSeries=self.tsWithAliBin4,
-                                                       family=ProtTigreReconstruction.FAMILY_EXACT,
-                                                       exactsMethod=aidx,
-                                                       tomoThickness=self.tomoWidth,
-                                                       filter=fidx)
+                tigreTomogram = self.runTigreReconstruction(self.tsWithAliBin4,
+                                                            objLabel=label,
+                                                            family=ProtTigreReconstruction.FAMILY_EXACT,
+                                                            exactsMethod=aidx,
+                                                            tomoThickness=self.tomoWidth,
+                                                            filter=fidx)
                 self._checkTomos(tigreTomogram)
 
-    '''
     def testGradientReconstruction(self):
         for aidx, algorithm in enumerate(ProtTigreReconstruction.ALGORITHMS_GRADIENT):
             label = 'Gradient ' + algorithm
             print(magentaStr(f"\n==> Reconstruction with {label}"))
-            tigreTomogram = self.runTigreReconstruction(self, objLabel=label,
-                                                   inputSetOfTiltSeries=self.tsWithAliBin4,
-                                                   family=ProtTigreReconstruction.FAMILY_GRADIENT,
-                                                   gradientMethod=aidx,
-                                                   tomoThickness=self.tomoWidth,
-                                                   iter=20)
+            tigreTomogram = self.runTigreReconstruction(self.tsWithAliBin4,
+                                                        objLabel=label,
+                                                        family=ProtTigreReconstruction.FAMILY_GRADIENT,
+                                                        exactsMethod=aidx,
+                                                        tomoThickness=self.tomoWidth
+                                                        )
             self._checkTomos(tigreTomogram)
-    '''
-    @classmethod
-    def testGradientReconstruction(cls, label, ts, recmethod, thickness):
-        tigreTomogram = cls.runTigreReconstruction(cls, objLabel=label,
-                                                   inputSetOfTiltSeries=ts,
-                                                   family=ProtTigreReconstruction.FAMILY_GRADIENT,
-                                                   gradientMethod=recmethod,
-                                                   tomoThickness=thickness,
-                                                   iter=20)
-        cls._checkTomos(tigreTomogram)
-
-    for aidx, algorithm in enumerate(ProtTigreReconstruction.ALGORITHMS_GRADIENT):
-        label = 'Gradient ' + algorithm
-        testGradientReconstruction(label, cls.tsWithAliBin4, aidx, tomoWidth)
-        
 
     def testKrylovReconstruction(self):
         for aidx, algorithm in enumerate(ProtTigreReconstruction.ALGORITHMS_KRYLOV):
-            label = 'Krylov ' + algorithm
-            print(magentaStr(f"\n==> Reconstruction with {label}"))
-            tigreTomogram = self.runTigreReconstruction(self, objLabel=label,
-                                                   inputSetOfTiltSeries=self.tsWithAliBin4,
-                                                   family=ProtTigreReconstruction.FAMILY_KRYLOV,
-                                                   KrylovMethod=aidx,
-                                                   tomoThickness=self.tomoWidth,
-                                                   iter=20)
-            self._checkTomos(tigreTomogram)
-
+             label = 'Krylov ' + algorithm
+             print(magentaStr(f"\n==> Reconstruction with {label}"))
+             tigreTomogram = self.runTigreReconstruction(self.tsWithAliBin4,
+                                                         objLabel=label,
+                                                         family=ProtTigreReconstruction.FAMILY_KRYLOV,
+                                                         exactsMethod=aidx,
+                                                         tomoThickness=self.tomoWidth,
+                                                         iter=20)
+             self._checkTomos(tigreTomogram)
 
     def testStatisticalReconstruction(self):
         for aidx, algorithm in enumerate(ProtTigreReconstruction.ALGORITHMS_STATISTICAL):
             label = 'Statistical ' + algorithm
             print(magentaStr(f"\n==> Reconstruction with {label}"))
-            tigreTomogram = self.runTigreReconstruction(self, objLabel=label,
-                                                   inputSetOfTiltSeries=self.tsWithAliBin4,
-                                                   family=ProtTigreReconstruction.FAMILY_STATISTICAL,
-                                                   tomoThickness=self.tomoWidth,
-                                                   iter=500)
+            tigreTomogram = self.runTigreReconstruction(self.tsWithAliBin4,
+                                                        objLabel=label,
+                                                        family=ProtTigreReconstruction.FAMILY_STATISTICAL,
+                                                        tomoThickness=self.tomoWidth,
+                                                        iter=500)
             self._checkTomos(tigreTomogram)
 
     def testVariationalReconstruction(self):
         for aidx, algorithm in enumerate(ProtTigreReconstruction.ALGORITHMS_VARIATIONAL):
             label = 'Variational ' + algorithm
             print(magentaStr(f"\n==> Reconstruction with {label}"))
-            tigreTomogram = self.runTigreReconstruction(self, objLabel=label,
-                                                   inputSetOfTiltSeries=self.tsWithAliBin4,
-                                                   family=ProtTigreReconstruction.FAMILY_VARIATIONAL,
-                                                   varMethod=aidx,
-                                                   tomoThickness=self.tomoWidth,
-                                                   iter=100)
+            tigreTomogram = self.runTigreReconstruction(self.tsWithAliBin4,
+                                                        objLabel=label,
+                                                        family=ProtTigreReconstruction.FAMILY_VARIATIONAL,
+                                                        varMethod=aidx,
+                                                        tomoThickness=self.tomoWidth,
+                                                        iter=100)
             self._checkTomos(tigreTomogram)
 
     def _checkTomos(self, inTomoSet):

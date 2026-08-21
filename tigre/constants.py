@@ -24,6 +24,7 @@
 # *
 # **************************************************************************
 TIGRE = 'tigre'
+TIGRE_WRAPPER = 'tigreWrapper'
 TIGRE_HOME = "TIGRE_HOME"
 
 # Suported versions
