@@ -25,6 +25,8 @@
 # **************************************************************************
 
 import os
+from os.path import join
+
 import pyworkflow.utils as pwutils
 from pyworkflow import TOMO
 import pwem
@@ -38,11 +40,15 @@ _logo = "icon.png"
 
 class Plugin(pwem.Plugin):
     _url = "https://github.com/scipion-em/scipion-em-tigre"
-    _pathVars = [TIGRE_CUDA_LIB]
+    _homeVar = TIGRE_HOME
+    _pathVars = [TIGRE_HOME, TIGRE_CUDA_LIB]
     _processingField = [TOMO]
+    _supportedVersions = [V3_1_3]
 
     @classmethod
     def _defineVariables(cls):
+        cls._defineEmVar(TIGRE_HOME, f'{TIGRE}-{TIGRE_DEFAULT_VERSION}',
+                         description="Root folder where tigre was extracted.")
         cls._defineVar(TIGRE_ENV_ACTIVATION, TIGRE_DEFAULT_ACTIVATION_CMD)
         cls._defineVar(TIGRE_CUDA_LIB, pwem.Config.CUDA_LIB)
         
@@ -69,17 +75,15 @@ class Plugin(pwem.Plugin):
         
         # Cloning the repos
         installationCmd += ' git clone https://github.com/CERN/TIGRE.git &&'
-        installationCmd += ' git clone https://github.com/Vilax/tigre tigreWrapper &&'
-        installationCmd += ' cd tigreWrapper &&'
+        installationCmd += ' git clone https://github.com/Vilax/tigre %s &&' % TIGRE_WRAPPER
+        installationCmd += ' cd %s &&' % TIGRE_WRAPPER
         
         # Installing tigre in the environment
         installationCmd += ' conda env create -y -n %s -f tigreEnv.yml && ' % TIGRE_ENV_NAME
+        installationCmd += 'conda activate %s && ' % TIGRE_ENV_NAME
         installationCmd += ' cd .. && ' 
         installationCmd += ' cd TIGRE && '
-        installationCmd += ' pip install . && '
-
-        # Activate new the environment
-        installationCmd += 'conda activate %s && ' % TIGRE_ENV_NAME
+        installationCmd += ' conda run -n %s pip install . && ' % TIGRE_ENV_NAME
 
         # Flag installation finished
         installationCmd += ' cd .. && touch %s' % TIGRE_INSTALLED
@@ -106,10 +110,14 @@ class Plugin(pwem.Plugin):
         return neededProgs
 
     @classmethod
-    def runTigre(cls, protocol, tigreProgram, args, cwd=None):
+    def runTigre(cls, protocol, args, cwd=None):
         """ Run Tigre command from a given protocol. """
         cmd = cls.getCondaActivationCmd() + " "
         cmd += cls.getTigreEnvActivation()
         cmd += f" && CUDA_VISIBLE_DEVICES=%(GPU)s "
-        tigreCmd = f'&& {tigreProgram} {args} '
+        tigreCmd = f'&& python3 {args} '
         protocol.runJob(cmd, tigreCmd, env=cls.getEnviron(), cwd=cwd)
+
+    @classmethod
+    def getTigreProgram(cls, tigreProgram):
+        return join(cls.getVar(TIGRE_HOME), TIGRE_WRAPPER, tigreProgram) + ' '
