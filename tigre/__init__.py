@@ -80,10 +80,13 @@ class Plugin(pwem.Plugin):
         
         # Installing tigre in the environment
         installationCmd += ' conda env create -y -n %s -f tigreEnv.yml && ' % TIGRE_ENV_NAME
+       
+        # Activate new the environment
         installationCmd += 'conda activate %s && ' % TIGRE_ENV_NAME
+        
         installationCmd += ' cd .. && ' 
         installationCmd += ' cd TIGRE && '
-        installationCmd += ' conda run -n %s pip install . && ' % TIGRE_ENV_NAME
+        installationCmd += ' pip install . && '
 
         # Flag installation finished
         installationCmd += ' cd .. && touch %s' % TIGRE_INSTALLED
