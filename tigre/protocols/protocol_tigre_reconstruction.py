@@ -471,7 +471,7 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
         return self.Tomograms
 
     def setTomoOddEven(self, tsId: str, outTomo: Tomogram) -> None:
-        if self.doOddEven:
+        if self.processOddEven:
             tomoPath = self._getExtraPath(tsId)
             halfMapsList = [os.path.join(tomoPath, tsId+EXT_MRC_ODD_NAME),
                             os.path.join(tomoPath, tsId+EXT_MRC_EVEN_NAME)]
