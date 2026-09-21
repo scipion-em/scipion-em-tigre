@@ -74,10 +74,11 @@ class Plugin(pwem.Plugin):
         installationCmd = cls.getCondaActivationCmd()
         
         # Cloning the repos
-        installationCmd += ' git clone https://github.com/CERN/TIGRE.git &&'
-        installationCmd += ' git clone https://github.com/Vilax/tigre %s &&' % TIGRE_WRAPPER
+        installationCmd += ' git clone https://github.com/Vilax/TIGRE_forked %s && ' % TIGRE_WRAPPER
+
         installationCmd += ' cd %s &&' % TIGRE_WRAPPER
-        
+        installationCmd += ' git checkout fpTigre && '  
+        installationCmd += ' cd Python/cli/ &&'
         # Installing tigre in the environment
         installationCmd += ' conda env create -y -n %s -f tigreEnv.yml && ' % TIGRE_ENV_NAME
        
@@ -85,7 +86,7 @@ class Plugin(pwem.Plugin):
         installationCmd += 'conda activate %s && ' % TIGRE_ENV_NAME
         
         installationCmd += ' cd .. && ' 
-        installationCmd += ' cd TIGRE && '
+        installationCmd += ' cd .. && '
         installationCmd += ' pip install . && '
 
         # Flag installation finished
@@ -123,4 +124,4 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def getTigreProgram(cls, tigreProgram):
-        return join(cls.getVar(TIGRE_HOME), TIGRE_WRAPPER, tigreProgram) + ' '
+        return join(cls.getVar(TIGRE_HOME), 'tigreWrapper', 'Python/cli', tigreProgram) + ' '

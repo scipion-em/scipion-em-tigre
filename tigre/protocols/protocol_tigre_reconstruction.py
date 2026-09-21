@@ -30,19 +30,17 @@ from enum import Enum
 import pyworkflow.utils as pwutils
 from pyworkflow import VERSION_3_0
 from pyworkflow.object import Set
-from pyworkflow.protocol.params import (PointerParam, IntParam, BooleanParam, LabelParam, EnumParam, StringParam, LEVEL_ADVANCED, GPU_LIST)
+from pyworkflow.protocol.params import (PointerParam, IntParam, FloatParam, BooleanParam, LabelParam, EnumParam, StringParam, LEVEL_ADVANCED, GPU_LIST)
 import pyworkflow.utils.path as path
+from protocol_tigre_reconstruction_base import ProtTigreForm
 
 from pwem.protocols import EMProtocol
-from pwem.emlib import lib
 import pwem.emlib.metadata as md
 
 from tomo.protocols.protocol_base import ProtTomoBase
 from tomo.objects import Tomogram, SetOfTomograms, SetOfTiltSeries
-#from .protocol_base import xTomoBase, OUTPUT_TOMOGRAMS_NAME
 from pyworkflow import BETA
 from tigre import Plugin
-#from xtomo.utils import calculateRotationAngleAndShiftsFromTM
 
 EXT_MRC = '.mrc'
 EXT_MRCS_TS_EVEN_NAME = "_even.mrcs"
@@ -54,7 +52,7 @@ OUTPUT_TOMOGRAMS_NAME = "Tomograms"
 class TigreOutputs(Enum):
     tomograms = SetOfTomograms
 
-class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
+class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
     """
     'This program provides a variety of algorithms to reconstruct tomogram from a set of tilt series.\n'
     'The program will make use of a tilt series file (--tiltseries) which contains the tilt images and a set of angles given in a metadata file (--angles).\n'
@@ -288,21 +286,25 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
                       important=True,
                       help='Size in voxels of the tomogram in the z axis (beam direction).')
 
-        form.addParam('iter',
+
+        
+        form.addHidden('regularizer', FloatParam, default=100)
+
+
+        form.addParam('tvlambda',
+                      FloatParam,
+                      condition='family==%d or family==%d' % (self.FAMILY_KRYLOV, self.FAMILY_VARIATIONAL),
+                      default=5,
+                      label='TV Regularizer',
+                      help='Num')
+
+        form.addParam('tviter',
                       IntParam,
-                      condition='not family==%d' % self.FAMILY_EXACT,
-                      allowsNull=True,
-                      label='Iterations',
-                      help='Number of iterations of the reconstruction algorithm. The wizard will suggest recommended'
-                           'values according to the selected algorithm. The recommended values are the next ones: \n'
-                           '_SIRT_: 20 iterations \n'
-                           '_SART_: 20 iterations \n '
-                           '_OS-SART_: 20 iterations \n '
-                           '_PCSD_: 20 iterations \n '
-                           '_AW-PCSD_: 20 iterations \n '
-                           '_FISTA_: 100 iterations \n '
-                           '_SART-TV_: 100 iterations \n '
-                           '_MLEM_: 500 iterations \n ')
+                      condition='family==%d' % (self.FAMILY_VARIATIONAL),
+                      default=10,
+                      label='TV iterations',
+                      help='Num')
+        
 
         form.addParam('useTigreInterpolation',
                       BooleanParam,
@@ -328,6 +330,36 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
                             "For a specific GPU set its number ID "
                             "(starting from 1).")
 
+        # exact methods form
+        self._defineWBPParams(form)
+        self._defineFBPParams(form)
+
+        # gradien methods form
+        self._defineSARTParams(form)
+        self._defineSIRTParams(form)
+        self._defineOSSARTParams(form)
+        self._defineASDPOCSParams(form)
+        self._defineOSASDPOCSParams(form)
+        self._definePCSDParams(form)
+        self._defineAWPCSDParams(form)
+        self._defineAWASDPOCSParams(form)
+
+        # Krylov form
+        self._defineCGLSParams(form)
+        self._defineLSQRParams(form)
+        self._defineLSMRParams(form)
+        self._defineHYBRIDLSQRParams(form)
+        self._defineABGMRESParams(form)
+        self._defineBAGMRESParams(form)
+        self._defineIRNTVCGLSParams(form)
+
+        # statistical methods form
+        self._defineMLEMParams(form)
+
+        # Variational methods form
+        self._defineFISTAParams(form)
+        self._defineSARTTVParams(form)
+
     # --------------------------- INSERT steps functions --------------------------------------------
 
     def _insertAllSteps(self):
@@ -339,7 +371,6 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
 
 
     def getReconstructionMethod(self):
-
         family = self.family.get()
         if family == self.FAMILY_EXACT:
             recMethod = self.exactsMethod.get()
@@ -347,20 +378,71 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
             args += ' --filter %s ' % self.FILTER_LIST[self.filter.get()]
         elif family == self.FAMILY_GRADIENT:
             recMethod = self.gradientMethod.get()
-            args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
-            args += ' --iter %i ' % self.getIter()
+            if recMethod == self.SART:
+                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+                args += ' --iter %i ' % self.SARTiter.get()
+            elif recMethod == self.SIRT:
+                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+                args += ' --iter %i ' % self.SIRTiter.get()
+            elif recMethod == self.OSSART:
+                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+                args += ' --iter %i ' % self.OSSARTiter.get()
+            elif recMethod == self.ASDPOCS:
+                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+                args += ' --iter %i ' % self.ASDPOCSiter.get()
+            elif recMethod == self.OSASDPOCS:
+                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+                args += ' --iter %i ' % self.OSASDPOCSiter.get()
+            elif recMethod == self.PCSD:
+                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+                args += ' --iter %i ' % self.PCSDiter.get()
+            elif recMethod == self.AWPCSD:
+                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+                args += ' --iter %i ' % self.AWPCSDiter.get()
+            elif recMethod == self.AWASDPCSD:
+                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+                args += ' --iter %i ' % self.AWASDPCSDiter.get()
+            else:
+                raise Exception('Combination of form parameter failed. Contact Scipion developers')
         elif family == self.FAMILY_KRYLOV:
             recMethod = self.KrylovMethod.get()
-            args = ' --method %s ' % self.ALGORITHMS_KRYLOV[recMethod]
-            args += ' --iter %i ' % self.getIter()
+            if recMethod == self.CGLS:
+                args += ' --iter %i ' % self.CGLSiter.get()
+            elif recMethod == self.LSQR:
+                args += ' --iter %i ' % self.LSQRiter.get()
+            elif recMethod == self.LSMR:
+                args += ' --iter %i ' % self.LSMRiter.get()
+            elif recMethod == self.HYBRIDLSQR:
+                args += ' --iter %i ' % self.HYBRIDLSQRiter.get()
+            elif recMethod == self.ABGMRES:
+                args += ' --iter %i ' % self.ABGMRESiter.get()
+            elif recMethod == self.BAGMRES:
+                args += ' --iter %i ' % self.BAGMRESiter.get()
+            elif recMethod == self.IRNTVCGLS:
+                args = ' --method %s ' % self.ALGORITHMS_KRYLOV[recMethod]
+                args += ' --iter %i ' % self.IRNTVCGLSiter.get()
+                args += ' --lambda %f ' % self.IRNTVCGLStvlambda.get()
+            else:
+                raise Exception('Combination of form parameter failed. Contact Scipion developers')
         elif family == self.FAMILY_STATISTICAL:
             recMethod = self.MLEM
             args = ' --method %s ' % self.ALGORITHMS_STATISTICAL[recMethod]
             args += ' --iter %i ' % self.getIter()
         elif family == self.FAMILY_VARIATIONAL:
             recMethod = self.varMethod.get()
-            args = ' --method %s ' % self.ALGORITHMS_VARIATIONAL[recMethod]
-            args += ' --iter %i ' % self.getIter()
+            if recMethod == self.FISTA:
+                args = ' --method %s ' % self.ALGORITHMS_VARIATIONAL[recMethod]
+                args += ' --iter %i ' % self.FISTAiter.get()
+                args += ' --tviter %i ' % self.FISTAtviter.get()
+                args += ' --tvlambda %f ' % self.FISTAtvlambda.get()
+            elif recMethod == self.SARTTV:
+                args = ' --method %s ' % self.ALGORITHMS_VARIATIONAL[recMethod]
+                args += ' --iter %i ' % self.SARTTViter.get()
+                args += ' --tviter %i ' % self.SARTTVtviter.get()
+                args += ' --tvlambda %f ' % self.SARTTVtvlambda.get()
+                args += ' --alphared %f ' % self.SARTTValphared.get()
+            else:
+                raise Exception('Combination of form parameter failed. Contact Scipion developers')
         else:
             raise Exception('Reconstruction method not properly selected.')
         return recMethod, args
@@ -385,20 +467,6 @@ class ProtTigreReconstruction(EMProtocol, ProtTomoBase):
                 return niters
         else:
             return self.iter.get()
-        
-    # def generateAlignmentFile(self, ts, fnAngles):
-    #     mdAli = lib.MetaData()
-    #     for ti in ts:
-    #         newRow = md.Row()
-    #         tilt = ti.getTiltAngle()
-    #         rot, sx, sy = calculateRotationAngleAndShiftsFromTM(ti)
-    #         newRow.setValue(lib.MDL_ANGLE_TILT, tilt)
-    #         newRow.setValue(lib.MDL_ANGLE_ROT, rot)
-    #         newRow.setValue(lib.MDL_SHIFT_X, sx)
-    #         newRow.setValue(lib.MDL_SHIFT_Y, sy)
-    #         newRow.addToMd(mdAli)
-    #
-    #     mdAli.write(fnAngles)
 
 
     def reconstructTomogramStep(self, tsId):
