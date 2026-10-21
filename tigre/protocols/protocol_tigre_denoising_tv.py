@@ -53,10 +53,10 @@ class ProtTigreDenoisingTV(EMProtocol, ProtTomoBase):
     This protocols carries out a denoising based on total variation
     """
 
-    _label = 'denosing tv'
+    _label = 'denoising tv'
     _lastUpdateVersion = VERSION_3_0
     _devStatus = BETA
-    _possibleOutputs = {TigreDenoisingTvOutputs}
+    _possibleOutputs = TigreDenoisingTvOutputs
 
 
     def __init__(self, **args):
@@ -78,11 +78,11 @@ class ProtTigreDenoisingTV(EMProtocol, ProtTomoBase):
 
         form.addParam('lamda',
                       FloatParam,
-                      expeexpertLevel=LEVEL_ADVANCED,
+                      expertLevel=LEVEL_ADVANCED,
                       default=15.0,
-                      label='Lambda yperparameter',
+                      label='Lambda',
                       help='Hyperparameter. The update will be multiplied by this number every iteration,'
-                           'to make the steps bigger or smaller. Default: lmbda=15.0')
+                           'to make the steps bigger or smaller. Default: lambda=15.0')
 
         form.addHidden(GPU_LIST,
                        StringParam,
@@ -123,9 +123,10 @@ class ProtTigreDenoisingTV(EMProtocol, ProtTomoBase):
         params += ' -o %s' % fullTomogramName
         params += ' --gpu %s' % self.gpuList.get()
 
-        programTigre = '/home/tomo/tigreBin/tigre/tigre_denoising_tv.py'
+        programTigre = Plugin.getTigreProgram('tigre_denoising_tv.py')
+        tigreArgs = programTigre + params
 
-        Plugin.runTigre(self, f' python3 {programTigre} ', params)
+        Plugin.runTigre(self, tigreArgs)
 
     def getOutputSetOfTomograms(self, inputSet, binning=1) -> SetOfTomograms:
 
@@ -174,8 +175,6 @@ class ProtTigreDenoisingTV(EMProtocol, ProtTomoBase):
 
     def _methods(self):
         messages = []
-        if hasattr(self, 'outputSetOfTomograms'):
-            messages.append('')
         return messages
 
     def _summary(self):

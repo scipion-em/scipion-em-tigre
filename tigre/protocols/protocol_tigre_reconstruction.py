@@ -32,7 +32,7 @@ from pyworkflow import VERSION_3_0
 from pyworkflow.object import Set
 from pyworkflow.protocol.params import (PointerParam, IntParam, FloatParam, BooleanParam, LabelParam, EnumParam, StringParam, LEVEL_ADVANCED, GPU_LIST)
 import pyworkflow.utils.path as path
-from protocol_tigre_reconstruction_base import ProtTigreForm
+from .protocol_tigre_reconstruction_base import ProtTigreForm
 
 from pwem.protocols import EMProtocol
 import pwem.emlib.metadata as md
@@ -116,62 +116,6 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
     _devStatus = BETA
     _possibleOutputs = TigreOutputs
 
-    # Definition of the families
-    FAMILIES = ['Exact algorithms', 'Gradient-based algorithms', 'Krylov algorithms', 'Statistical reconstructions', 'Variational methods']
-    FAMILY_EXACT       = 0
-    FAMILY_GRADIENT    = 1
-    FAMILY_KRYLOV      = 2
-    FAMILY_STATISTICAL = 3
-    FAMILY_VARIATIONAL = 4
-
-    # Exact algorithms
-    ALGORITHMS_EXACT = ['WBP', 'FDK']
-    WBP  = 0
-    FDK  = 1
-
-    #Gradient based algorithms
-    ALGORITHMS_GRADIENT = ['SART', 'SIRT', 'OS-SART', 'ASD-POCS', 'OS-ASD-POCS', 'PCSD', 'AW-PCSD', 'AW-ASD-POCS']
-    SART       = 0
-    SIRT       = 1
-    OSSART     = 2
-    ASDPOCS    = 3
-    OSASDPOCS  = 4
-    PCSD       = 5
-    AWPCSD     = 6
-    AWASDPOCS  = 7
-
-    #Krylov subspace algorithms
-    ALGORITHMS_KRYLOV = ['CGLS', 'LSQR', 'LSMR', 'hybrid-LSQR', 'AB-GMRES', 'BA-GMRES', 'IRN-TV-CGLS']
-    CGLS           = 0
-    LSQR           = 1
-    LSMR           = 2
-    HYBRIDLSQR     = 3
-    ABGMRES        = 4
-    BAGMRES        = 5
-    IRNTVCGLS      = 6
-
-    # Statistical algorithms
-    ALGORITHMS_STATISTICAL = ['MLEM']
-    MLEM = 0
-
-    # Variational algorithms
-    ALGORITHMS_VARIATIONAL = ['FISTA', 'SART-TV']
-    FISTA  = 0
-    SARTTV = 1
-
-    exactList     = []
-    grandientList = []
-    krylovList    = []
-    statsList     = []
-    varList       = []
-
-    #Filters list
-    FILTER_LIST = ['Ram-lak', 'Shepp-Logan', 'cosine', 'Hamming', 'Hann']
-    RAMLAK      = 0
-    SHEPP_LOGAN = 1
-    COSINE      = 2
-    HAMMING     = 3
-    HANN        = 4
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
@@ -186,132 +130,23 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
                       important=True,
                       help='Select the Set of Tilt Series that will be used to reconstruct the tomograms.')
 
-        form.addParam('family',
-                      EnumParam,
-                      choices=self.FAMILIES,
-                      default=self.FAMILY_EXACT,
-                      label="Family of methods",
-                      isplay=EnumParam.DISPLAY_COMBO,
-                      help='Select an option to reconstruct tomograms: \n '
-                           '_ART_: Arithmetic reconstruction technique. \n'
-                           '_SIRT_: (only with MPI) Simultaneous Iterative Reconstruction Technique. \n ')
-
-        #TODO: Fix documentation and references to the algorithms
-        form.addParam('exactsMethod',
-                      EnumParam,
-                      choices=self.ALGORITHMS_EXACT,
-                      default=self.WBP,
-                      condition='family==%d' % self.FAMILY_EXACT,
-                      isplay=EnumParam.DISPLAY_COMBO,
-                      label="Reconstruction Algorithm",
-                      help='Select an option to reconstruct tomograms: \n '
-                           '_WBP_: (default) Weighted back projection or filtered back projection. \n'
-                           '_FDK_: Feldkamp-Davis-Kress algorithm. \n')
-
-        #TODO: Fix documentation and references to the algorithms
-        form.addParam('gradientMethod',
-                      EnumParam,
-                      choices=self.ALGORITHMS_GRADIENT,
-                      default=self.SART,
-                      condition='family==%d' % self.FAMILY_GRADIENT,
-                      isplay=EnumParam.DISPLAY_COMBO,
-                      label="Reconstruction Algorithm",
-                      help='Select an option to reconstruct tomograms: \n '
-                           '_SART_: (default) Simultaneous algebraic reconstruction technique. \n'
-                           '_SIRT_: Simultaneus iterative reconstruction technique. \n'
-                           '_OS-SART_: Ordered Subset Simultaneous Algebraic Reconstruction Technique. \n'
-                           '_ASD-POCS_: Adaptative Steepest Descent with Projections Onto the Convex Set. \n'
-                           '_OS-ASD-POCS_: Oriented Subsets version of ASD-POC. \n'
-                           '_PCSD_: Projection-controlled steepest descent method. \n'
-                           '_AW-PCSD_: Adaptive Weighted version of PCSD. \n'
-                           '_AW-ASD-POCS_: Adaptive Weighted TV (edge preserving) version of ASD-POCS. \n')
-
-        #TODO: Fix documentation and references to the algorithms
-        form.addParam('KrylovMethod',
-                      EnumParam,
-                      choices=self.ALGORITHMS_KRYLOV,
-                      default=self.CGLS,
-                      condition='family==%d' % self.FAMILY_KRYLOV,
-                      isplay=EnumParam.DISPLAY_COMBO,
-                      label="Reconstruction Algorithm",
-                      help='Select an option to reconstruct tomograms: \n '
-                           '_CGLS_: (default) Conjugate Gradient Least Squares. \n'
-                           '_LSQR_: Least Squares QR factorization. \n'
-                           '_LSMR_: Least Squares MINRES. \n'
-                           '_hybrid LSQR_: Hybrid Least Squares QR factorization. \n'
-                           '_AB-GMRES_: AB-generalized minimal residual method. \n'
-                           '_BA-GMRES_: BA-generalized minimal residual method. \n'
-                           '_IRN-TV-CGLS_: Total variation CGLS. \n')
-
-        #TODO: Fix documentation and references to the algorithms
-        form.addParam('statsMethod',
-                      LabelParam,
-                      condition='family==%d' % self.FAMILY_STATISTICAL,
-                      label="MLEM algorithm",
-                      help='Select an option to reconstruct tomograms: \n '
-                           '_MLEM_: (default) Maximum likelihood Expectation maximization. \n')
-
-        #TODO: Fix documentation and references to the algorithms
-        form.addParam('varMethod',
-                      EnumParam,
-                      choices=self.ALGORITHMS_VARIATIONAL,
-                      default=self.FISTA,
-                      condition='family==%d' % self.FAMILY_VARIATIONAL,
-                      isplay=EnumParam.DISPLAY_COMBO,
-                      label="Reconstruction Algorithm",
-                      help='Select an option to reconstruct tomograms: \n '
-                           '_FISTA_: (default) Fast iterative shrinkage thresholding algorithm.. \n'
-                           '_SART-TV_: Simultaneous algebraic reconstruction technique with total variation. \n')
-
-        filterCondition = 'family==%d' % self.FAMILY_EXACT
-
-        form.addParam('filter',
-                      EnumParam,
-                      choices=self.FILTER_LIST,
-                      default=self.RAMLAK,
-                      condition=filterCondition,
-                      isplay=EnumParam.DISPLAY_COMBO,
-                      label="Filter",
-                      help='Select the filter to be applied: \n '
-                           '_Ram-lak_: (default) Fast iterative shrinkage thresholding algorithm.. \n'
-                           '_Shepp-Logan_: Simultaneous algebraic reconstruction technique with total variation. \n'
-                           '_Cosine_: Simultaneous algebraic reconstruction technique with total variation. \n'
-                           '_Hamming_: Simultaneous algebraic reconstruction technique with total variation. \n'
-                           '_Hann_: Simultaneous algebraic reconstruction technique with total variation. \n')
-
         form.addParam('tomoThickness',
                       IntParam,
                       default=300,
                       label='Tomogram thickness (voxels)',
                       important=True,
-                      help='Size in voxels of the tomogram in the z axis (beam direction).')
+                      help='Size in voxels of the tomogram along the z axis (beam direction).')
 
+        self._defineTigreParams(form)
 
-        
-        form.addHidden('regularizer', FloatParam, default=100)
-
-
-        form.addParam('tvlambda',
-                      FloatParam,
-                      condition='family==%d or family==%d' % (self.FAMILY_KRYLOV, self.FAMILY_VARIATIONAL),
-                      default=5,
-                      label='TV Regularizer',
-                      help='Num')
-
-        form.addParam('tviter',
-                      IntParam,
-                      condition='family==%d' % (self.FAMILY_VARIATIONAL),
-                      default=10,
-                      label='TV iterations',
-                      help='Num')
-        
-
-        form.addParam('useTigreInterpolation',
+        form.addHidden('useTigreInterpolation',
                       BooleanParam,
                       expertLevel=LEVEL_ADVANCED,
-                      default=True,
+                      default=False,
                       label='Use tigre interpolation?',
-                      help='TODO')
+                      help= 'True if the interpolation is carried out by native Tigre. ' \
+                            'False if the interpolation is carried out with the wrapper ' \
+                            'that Tigre has (but not native) for applying alignment')
 
         form.addParam('processOddEven',
                       BooleanParam,
@@ -330,35 +165,6 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
                             "For a specific GPU set its number ID "
                             "(starting from 1).")
 
-        # exact methods form
-        self._defineWBPParams(form)
-        self._defineFBPParams(form)
-
-        # gradien methods form
-        self._defineSARTParams(form)
-        self._defineSIRTParams(form)
-        self._defineOSSARTParams(form)
-        self._defineASDPOCSParams(form)
-        self._defineOSASDPOCSParams(form)
-        self._definePCSDParams(form)
-        self._defineAWPCSDParams(form)
-        self._defineAWASDPOCSParams(form)
-
-        # Krylov form
-        self._defineCGLSParams(form)
-        self._defineLSQRParams(form)
-        self._defineLSMRParams(form)
-        self._defineHYBRIDLSQRParams(form)
-        self._defineABGMRESParams(form)
-        self._defineBAGMRESParams(form)
-        self._defineIRNTVCGLSParams(form)
-
-        # statistical methods form
-        self._defineMLEMParams(form)
-
-        # Variational methods form
-        self._defineFISTAParams(form)
-        self._defineSARTTVParams(form)
 
     # --------------------------- INSERT steps functions --------------------------------------------
 
@@ -378,95 +184,92 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
             args += ' --filter %s ' % self.FILTER_LIST[self.filter.get()]
         elif family == self.FAMILY_GRADIENT:
             recMethod = self.gradientMethod.get()
+            args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
+
             if recMethod == self.SART:
-                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
                 args += ' --iter %i ' % self.SARTiter.get()
+                args += ' --lambda %f ' % self.SARTlambda.get()
+                args += ' --lambdared %f ' % self.SARTlambdared.get()
             elif recMethod == self.SIRT:
-                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
                 args += ' --iter %i ' % self.SIRTiter.get()
+                args += ' --lambda %f ' % self.SIRTlambda.get()
+                args += ' --lambdared %f ' % self.SIRTlambdared.get()
             elif recMethod == self.OSSART:
-                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
                 args += ' --iter %i ' % self.OSSARTiter.get()
+                args += ' --lambda %f ' % self.OSSARTlambda.get()
+                args += ' --lambdared %f ' % self.OSSARTlambdared.get()
             elif recMethod == self.ASDPOCS:
-                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
                 args += ' --iter %i ' % self.ASDPOCSiter.get()
+                args += ' --tviter %i ' % self.ASDPOCStviter.get()
+                args += ' --alpha %f ' % self.ASDPOCSalpha.get()
+                args += ' --lambda %f ' % self.ASDPOCSlambda.get()
+                args += ' --lambdared %f ' % self.ASDPOCSlambdared.get()
+                args += ' --alpha_red %f ' % self.ASDPOCSalphared.get()
+                args += ' --ratio %f ' % self.ASDPOCSratio.get()
             elif recMethod == self.OSASDPOCS:
-                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
                 args += ' --iter %i ' % self.OSASDPOCSiter.get()
+                args += ' --tviter %i ' % self.OSASDPOCStviter.get()
+                args += ' --alpha %f ' % self.OSASDPOCSalpha.get()
+                args += ' --lambda %f ' % self.OSASDPOCSlambda.get()
+                args += ' --lambdared %f ' % self.OSASDPOCSlambdared.get()
+                args += ' --alpha_red %f ' % self.OSASDPOCSalphared.get()
+                args += ' --ratio %f ' % self.OSASDPOCSratio.get()
             elif recMethod == self.PCSD:
-                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
                 args += ' --iter %i ' % self.PCSDiter.get()
             elif recMethod == self.AWPCSD:
-                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
                 args += ' --iter %i ' % self.AWPCSDiter.get()
-            elif recMethod == self.AWASDPCSD:
-                args = ' --method %s ' % self.ALGORITHMS_GRADIENT[recMethod]
-                args += ' --iter %i ' % self.AWASDPCSDiter.get()
+            elif recMethod == self.AWASDPOCS:
+                args += ' --iter %i ' % self.AWASDPOCSiter.get()
+                args += ' --tviter %i ' % self.AWASDPOCStviter.get()
+                args += ' --alpha %f ' % self.AWASDPOCSalpha.get()
+                args += ' --lambda %f ' % self.AWASDPOCSlambda.get()
+                args += ' --lambdared %f ' % self.AWASDPOCSlambdared.get()
+                args += ' --alpha_red %f ' % self.AWASDPOCSalphared.get()
+                args += ' --ratio %f ' % self.AWASDPOCSratio.get()
             else:
                 raise Exception('Combination of form parameter failed. Contact Scipion developers')
         elif family == self.FAMILY_KRYLOV:
             recMethod = self.KrylovMethod.get()
+            args = ' --method %s ' % self.ALGORITHMS_KRYLOV[recMethod]
             if recMethod == self.CGLS:
                 args += ' --iter %i ' % self.CGLSiter.get()
             elif recMethod == self.LSQR:
                 args += ' --iter %i ' % self.LSQRiter.get()
             elif recMethod == self.LSMR:
                 args += ' --iter %i ' % self.LSMRiter.get()
+                args += ' --lambda %f ' % self.LSMRlambda.get()
             elif recMethod == self.HYBRIDLSQR:
-                args += ' --iter %i ' % self.HYBRIDLSQRiter.get()
+                args += ' --iter %i ' % self.hybridLSQRiter.get()
             elif recMethod == self.ABGMRES:
                 args += ' --iter %i ' % self.ABGMRESiter.get()
             elif recMethod == self.BAGMRES:
                 args += ' --iter %i ' % self.BAGMRESiter.get()
             elif recMethod == self.IRNTVCGLS:
-                args = ' --method %s ' % self.ALGORITHMS_KRYLOV[recMethod]
                 args += ' --iter %i ' % self.IRNTVCGLSiter.get()
                 args += ' --lambda %f ' % self.IRNTVCGLStvlambda.get()
+                args += ' --innerouter %i ' % self.IRNTVCGLSinnerouter.get()
             else:
                 raise Exception('Combination of form parameter failed. Contact Scipion developers')
         elif family == self.FAMILY_STATISTICAL:
             recMethod = self.MLEM
             args = ' --method %s ' % self.ALGORITHMS_STATISTICAL[recMethod]
-            args += ' --iter %i ' % self.getIter()
+            args += ' --iter %i ' % self.MLEMiter.get()
         elif family == self.FAMILY_VARIATIONAL:
             recMethod = self.varMethod.get()
+            args = ' --method %s ' % self.ALGORITHMS_VARIATIONAL[recMethod]
             if recMethod == self.FISTA:
-                args = ' --method %s ' % self.ALGORITHMS_VARIATIONAL[recMethod]
                 args += ' --iter %i ' % self.FISTAiter.get()
                 args += ' --tviter %i ' % self.FISTAtviter.get()
                 args += ' --tvlambda %f ' % self.FISTAtvlambda.get()
             elif recMethod == self.SARTTV:
-                args = ' --method %s ' % self.ALGORITHMS_VARIATIONAL[recMethod]
                 args += ' --iter %i ' % self.SARTTViter.get()
                 args += ' --tviter %i ' % self.SARTTVtviter.get()
                 args += ' --tvlambda %f ' % self.SARTTVtvlambda.get()
-                args += ' --alphared %f ' % self.SARTTValphared.get()
             else:
                 raise Exception('Combination of form parameter failed. Contact Scipion developers')
         else:
             raise Exception('Reconstruction method not properly selected.')
         return recMethod, args
-
-    def getIter(self):
-        family = self.family.get()
-        if not self.iter.hasValue():
-            if family == self.FAMILY_GRADIENT:
-                if self.gradientMethod.get() == self.PCSD or self.gradientMethod.get() == self.PCSD:
-                    niters = 25
-                else:
-                    niters = 20
-                return niters
-            if family == self.FAMILY_KRYLOV:
-                niters = 20
-                return niters
-            if family == self.FAMILY_STATISTICAL:
-                niters = 500
-                return niters
-            if family == self.FAMILY_VARIATIONAL:
-                niters = 200
-                return niters
-        else:
-            return self.iter.get()
 
 
     def reconstructTomogramStep(self, tsId):
@@ -475,7 +278,7 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
         """
         ts = self.inputSetOfTiltSeries.get()[{'_tsId': tsId}]
 
-        #Defining the output folder
+        # Defining the output folder
         tomoPath = self._getExtraPath(tsId)
         pwutils.path.makePath(tomoPath)
 
@@ -486,7 +289,8 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
         tmpPrefix = self._getTmpPath(tsId)
         fnTs = os.path.join(tmpPrefix, firstItem.parseFileName())
         fnTs = firstItem.getFileName()
-        #Defining outfiles
+
+        # Defining outfiles
         fullTomogramName = os.path.join(tomoPath, tsId+EXT_MRC)
 
         recMethod, args = self.getReconstructionMethod()
@@ -539,7 +343,7 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
         return self.Tomograms
 
     def setTomoOddEven(self, tsId: str, outTomo: Tomogram) -> None:
-        if self.processOddEven:
+        if self.processOddEven.get():
             tomoPath = self._getExtraPath(tsId)
             halfMapsList = [os.path.join(tomoPath, tsId+EXT_MRC_ODD_NAME),
                             os.path.join(tomoPath, tsId+EXT_MRC_EVEN_NAME)]
@@ -584,8 +388,6 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
 
     def _methods(self):
         messages = []
-        if hasattr(self, 'outputSetOfTomograms'):
-            messages.append('')
         return messages
 
     def _summary(self):

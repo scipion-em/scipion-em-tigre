@@ -7,7 +7,7 @@ name = "scipion-em-tigre"
 dynamic = ["version", "dependencies"]
 description = "Scipion plugin tigre"
 authors = [
-    {name = "you", email = "you@yourinstitution.email"}
+    {name = "J.L. Vilas", email = "jlvilas@cnb.csic.es"}
 ]
 requires-python = ">=3.8"
 readme = "README.rst"
@@ -20,7 +20,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
 ]
-keywords = ["scipion", "cryoem", "imageprocessing", "scipion-3.0"]
+keywords = ["scipion", "cryoet", "tomogram", "imageprocessing", "scipion-3.0"]
 
 [project.urls]
 Homepage = "https://github.com/scipion-em/scipion-em-tigre"

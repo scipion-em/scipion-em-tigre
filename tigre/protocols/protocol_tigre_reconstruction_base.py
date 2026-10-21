@@ -40,6 +40,8 @@ from tomo.protocols.protocol_base import ProtTomoBase
 from tomo.objects import Tomogram, SetOfTomograms, SetOfTiltSeries
 from pyworkflow import BETA
 from tigre import Plugin
+from .protocol_tigre_reconstruction_helps import *
+
 
 
 class ProtTigreForm(ProtTomoBase):
@@ -106,11 +108,73 @@ class ProtTigreForm(ProtTomoBase):
         self.Tomograms = None
 
     # --------------------------- DEFINE param functions ----------------------
-    def _defineParams(self, form):
+    def _defineTigreParams(self, form):
 
-        self._defineWBPParams(form)
-        self._defineFBPParams(form)
+        form.addParam('family',
+                      EnumParam,
+                      choices=self.FAMILIES,
+                      default=self.FAMILY_EXACT,
+                      label="Family of methods",
+                      display=EnumParam.DISPLAY_COMBO,
+                      help=familyHelps['family'])
 
+        form.addParam('exactsMethod',
+                      EnumParam,
+                      choices=self.ALGORITHMS_EXACT,
+                      default=self.WBP,
+                      condition='family==%d' % self.FAMILY_EXACT,
+                      display=EnumParam.DISPLAY_COMBO,
+                      label="Reconstruction Algorithm",
+                      help=exactsMethodHelp['exactMethod'])
+
+        form.addParam('gradientMethod',
+                      EnumParam,
+                      choices=self.ALGORITHMS_GRADIENT,
+                      default=self.SART,
+                      condition='family==%d' % self.FAMILY_GRADIENT,
+                      display=EnumParam.DISPLAY_COMBO,
+                      label="Reconstruction Algorithm",
+                      help=gradientMethodHelp['gradientMethod'])
+
+        form.addParam('KrylovMethod',
+                      EnumParam,
+                      choices=self.ALGORITHMS_KRYLOV,
+                      default=self.CGLS,
+                      condition='family==%d' % self.FAMILY_KRYLOV,
+                      display=EnumParam.DISPLAY_COMBO,
+                      label="Reconstruction Algorithm",
+                      help=KrylovMethodHelp['KrylovMethod'])
+
+        form.addParam('statsMethod',
+                      LabelParam,
+                      condition='family==%d' % self.FAMILY_STATISTICAL,
+                      label="MLEM algorithm",
+                      help=statsMethodHelp['statsMethod'])
+
+        form.addParam('varMethod',
+                      EnumParam,
+                      choices=self.ALGORITHMS_VARIATIONAL,
+                      default=self.FISTA,
+                      condition='family==%d' % self.FAMILY_VARIATIONAL,
+                      display=EnumParam.DISPLAY_COMBO,
+                      label="Reconstruction Algorithm",
+                      help=varMethodHelp['varMethod'])
+
+        filterCondition = 'family==%d' % self.FAMILY_EXACT
+
+        form.addParam('filter',
+                      EnumParam,
+                      choices=self.FILTER_LIST,
+                      default=self.RAMLAK,
+                      condition=filterCondition,
+                      display=EnumParam.DISPLAY_COMBO,
+                      label="Filter",
+                      help=filterHelps['filter'])
+
+
+
+
+        # gradien methods form
         self._defineSARTParams(form)
         self._defineSIRTParams(form)
         self._defineOSSARTParams(form)
@@ -120,6 +184,7 @@ class ProtTigreForm(ProtTomoBase):
         self._defineAWPCSDParams(form)
         self._defineAWASDPOCSParams(form)
 
+        # Krylov form
         self._defineCGLSParams(form)
         self._defineLSQRParams(form)
         self._defineLSMRParams(form)
@@ -127,242 +192,247 @@ class ProtTigreForm(ProtTomoBase):
         self._defineABGMRESParams(form)
         self._defineBAGMRESParams(form)
         self._defineIRNTVCGLSParams(form)
+
+        # statistical methods form
         self._defineMLEMParams(form)
+
+        # Variational methods form
         self._defineFISTAParams(form)
         self._defineSARTTVParams(form)
 
 
-    def _defineWBPParams(self, form):
-        pass
-
-    def _defineFBPParams(self, form):
-        pass
-
     def _defineSARTParams(self, form):
         form.addParam('SARTiter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.SART),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.SART),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=SARThelps['SARTiter'])
 
         form.addParam('SARTlambda',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.SART),
-                      default=30,
-                      label='Iterations',
-                      help='N')
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.SART),
+                      default=1.0,
+                      label='λ regularizer',
+                      help=SARThelps['SARTlambda'])
 
         form.addParam('SARTlambdared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.SART),
-                      default=0.9999,
-                      label='lambda red',
-                      help='N')
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.SART),
+                      default=0.999,
+                      label='λ red',
+                      help=SARThelps['SARTlambdared'])
 
     def _defineSIRTParams(self, form):
         form.addParam('SIRTiter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.SIRT),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.SIRT),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=SIRThelps['SIRTiter'])
 
         form.addParam('SIRTlambda',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.SIRT),
-                      default=30,
-                      label='Iterations',
-                      help='N')
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.SIRT),
+                      default=1.0,
+                      label='lambda regularizer',
+                      help=SIRThelps['SIRTlambda'])
 
         form.addParam('SIRTlambdared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.SIRT),
-                      default=0.9999,
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.SIRT),
+                      default=0.999,
                       label='lambda red',
-                      help='N')
+                      help=SIRThelps['SIRTlambdared'])
 
     def _defineOSSARTParams(self, form):
         form.addParam('OSSARTiter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSSART),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSSART),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=OSSARThelps['OSSARTiter'])
 
         form.addParam('OSSARTlambda',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSSART),
-                      default=30,
-                      label='Iterations',
-                      help='N')
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSSART),
+                      default=1.0,
+                      label='lambda regularizer',
+                      help=OSSARThelps['OSSARTlambda'])
 
         form.addParam('OSSARTlambdared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSSART),
-                      default=0.9999,
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSSART),
+                      default=0.999,
                       label='lambda red',
-                      help='N')
+                      help=OSSARThelps['OSSARTlambdared'])
 
     def _defineASDPOCSParams(self, form):
         form.addParam('ASDPOCSiter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=ASDPOCShelps['ASDPOCSiter'])
 
         form.addParam('ASDPOCSlambda',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
-                      default=30,
-                      label='Iterations',
-                      help='N')
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
+                      default=1.0,
+                      label='lambda regularizer',
+                      help=ASDPOCShelps['ASDPOCSlambda'])
 
         form.addParam('ASDPOCSalpha',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
                       default=0.002,
                       label='alpha',
-                      help='N')
+                      help=ASDPOCShelps['ASDPOCSalpha'])
 
         form.addParam('ASDPOCStviter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
                       default=25,
                       label='TV iterations',
-                      help='N')
+                      help=ASDPOCShelps['ASDPOCStviter'])
 
         form.addParam('ASDPOCSlambdared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
                       default=0.9999,
                       label='lambda red',
-                      help='N')
+                      help=ASDPOCShelps['ASDPOCSlambdared'])
 
         form.addParam('ASDPOCSalphared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
                       default=0.95,
-                      label='Alpha red',
-                      help='N')
+                      label='alpha red',
+                      help=ASDPOCShelps['ASDPOCSalphared'])
 
         form.addParam('ASDPOCSratio',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.ASDPOCS),
                       default=0.94,
                       label='Ratio',
-                      help='N')
+                      help=ASDPOCShelps['ASDPOCSratio'])
 
     def _defineOSASDPOCSParams(self, form):
         form.addParam('OSASDPOCSiter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
-                      default=30,
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
+                      default=20,
                       label='Iterations',
-                      help='N')
+                      help=OSASDPOCShelps['OSASDPOCSiter'])
 
         form.addParam('OSASDPOCSlambda',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
-                      default=30,
-                      label='Iterations',
-                      help='N')
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
+                      default=1.0,
+                      label='lambda regularizer',
+                      help=OSASDPOCShelps['OSASDPOCSlambda'])
 
         form.addParam('OSASDPOCSalpha',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
                       default=0.002,
                       label='alpha',
-                      help='N')
+                      help=OSASDPOCShelps['OSASDPOCSalpha'])
 
         form.addParam('OSASDPOCStviter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
                       default=25,
                       label='TV iterations',
-                      help='N')
+                      help=OSASDPOCShelps['OSASDPOCStviter'])
 
         form.addParam('OSASDPOCSlambdared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
                       default=0.9999,
                       label='lambda red',
-                      help='N')
+                      help=OSASDPOCShelps['OSASDPOCSlambdared'])
 
         form.addParam('OSASDPOCSalphared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
                       default=0.95,
-                      label='Alpha red',
-                      help='N')
+                      label='alpha red',
+                      help=OSASDPOCShelps['OSASDPOCSalphared'])
 
         form.addParam('OSASDPOCSratio',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.OSASDPOCS),
                       default=0.94,
                       label='Ratio',
-                      help='N')
+                      help=OSASDPOCShelps['OSASDPOCSratio'])
 
 
     def _definePCSDParams(self, form):
         form.addParam('PCSDiter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.PCSD),
-                      default=30,
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.PCSD),
+                      default=20,
                       label='Iterations',
-                      help='N')
+                      help=PCSDhelps['PCSDiter'])
 
     def _defineAWPCSDParams(self, form):
         form.addParam('AWPCSDiter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.AWPCSD),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.AWPCSD),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=AWPCSDhelps['AWPCSDiter'])
 
     def _defineAWASDPOCSParams(self, form):
         form.addParam('AWASDPOCSiter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
-                      default=30,
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
+                      default=20,
                       label='Iterations',
-                      help='N')
+                      help=AWASDPOCShelps['AWASDPOCSiter'])
+
+        form.addParam('AWASDPOCSlambda',
+                      FloatParam,
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
+                      default=1.0,
+                      label='lambda regularizer',
+                      help=AWASDPOCShelps['AWASDPOCSlambda'])             
 
         form.addParam('AWASDPOCSalpha',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
                       default=0.002,
                       label='alpha',
-                      help='N')
+                      help=AWASDPOCShelps['AWASDPOCSalpha'])
 
         form.addParam('AWASDPOCStviter',
                       IntParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
                       default=25,
                       label='TV iterations',
-                      help='N')
+                      help=AWASDPOCShelps['AWASDPOCStviter'])
 
         form.addParam('AWASDPOCSlambdared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
                       default=0.9999,
                       label='lambda red',
-                      help='N')
+                      help=AWASDPOCShelps['AWASDPOCSlambdared'])
 
         form.addParam('AWASDPOCSalphared',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
                       default=0.95,
-                      label='Alpha red',
-                      help='N')
+                      label='alpha red',
+                      help=AWASDPOCShelps['AWASDPOCSalphared'])
 
         form.addParam('AWASDPOCSratio',
                       FloatParam,
-                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
+                      condition='family==%d and gradientMethod==%d' % (self.FAMILY_GRADIENT, self.AWASDPOCS),
                       default=0.94,
                       label='Ratio',
-                      help='N')
+                      help=AWASDPOCShelps['AWASDPOCSratio'])
 
     def _defineCGLSParams(self, form):
         form.addParam('CGLSiter',
@@ -370,7 +440,7 @@ class ProtTigreForm(ProtTomoBase):
                       condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.CGLS),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=CGLShelps['CGLSiter'])
 
     def _defineLSQRParams(self, form):
         form.addParam('LSQRiter',
@@ -378,7 +448,7 @@ class ProtTigreForm(ProtTomoBase):
                       condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.LSQR),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=LSQRhelps['LSQRiter'])
 
     def _defineLSMRParams(self, form):
         form.addParam('LSMRiter',
@@ -386,15 +456,21 @@ class ProtTigreForm(ProtTomoBase):
                       condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.LSMR),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=LSMRhelps['LSMRiter'])
+        form.addParam('LSMRlambda',
+                      FloatParam,
+                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.LSMR),
+                      default=1.0,
+                      label='lambda',
+                      help=LSMRhelps['LSMRlambda'])
 
     def _defineHYBRIDLSQRParams(self, form):
-        form.addParam('HYBRIDLSQRiter',
+        form.addParam('hybridLSQRiter',
                       IntParam,
                       condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.HYBRIDLSQR),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=hybridLSQRhelps['hybridLSQRiter'])
 
     def _defineABGMRESParams(self, form):
         form.addParam('ABGMRESiter',
@@ -402,7 +478,7 @@ class ProtTigreForm(ProtTomoBase):
                       condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.ABGMRES),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=ABGMREShelps['ABGMRESiter'])
 
     def _defineBAGMRESParams(self, form):
         form.addParam('BAGMRESiter',
@@ -410,7 +486,7 @@ class ProtTigreForm(ProtTomoBase):
                       condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.BAGMRES),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=BAGMREShelps['BAGMRESiter'])
 
 
     def _defineIRNTVCGLSParams(self, form):
@@ -419,22 +495,28 @@ class ProtTigreForm(ProtTomoBase):
                       condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.IRNTVCGLS),
                       default=10,
                       label='Iterations',
-                      help='N')
+                      help=IRNTVCGLShelps['IRNTVCGLSiter'])
 
         form.addParam('IRNTVCGLStvlambda',
                       FloatParam,
                       condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.IRNTVCGLS),
-                      default=5,
-                      label='TV Regularizer',
-                      help='Num')
+                      default=5.0,
+                      label='TV regularizer',
+                      help=IRNTVCGLShelps['IRNTVCGLStvlambda'])
+        form.addParam('IRNTVCGLSinnerouter',
+                      IntParam,
+                      condition='family==%d and KrylovMethod==%d' % (self.FAMILY_KRYLOV, self.IRNTVCGLS),
+                      default=2,
+                      label='number of estimations for weights',
+                      help=IRNTVCGLShelps['IRNTVCGLSinnerouter'])
 
     def _defineMLEMParams(self, form):
         form.addParam('MLEMiter',
                       IntParam,
-                      condition='family==%d and varMethod==%d' % (self.FAMILY_STATISTICAL, self.MLEM),
+                      condition='family==%d' % self.FAMILY_STATISTICAL,
                       default=500,
                       label='Iterations',
-                      help='N')
+                      help=MLEMhelps['MLEMiter'])
 
     def _defineFISTAParams(self, form):
         form.addParam('FISTAiter',
@@ -442,20 +524,20 @@ class ProtTigreForm(ProtTomoBase):
                       condition='family==%d and varMethod==%d' % (self.FAMILY_VARIATIONAL, self.FISTA),
                       default=50,
                       label='Iterations',
-                      help='N')
+                      help=FISTAhelps['FISTAiter'])
 
         form.addParam('FISTAtvlambda',
                       FloatParam,
                       condition='family==%d and varMethod==%d' % (self.FAMILY_VARIATIONAL, self.FISTA),
-                      default=10,
+                      default=10.0,
                       label='TV Regularizer',
-                      help='Num')
+                      help=FISTAhelps['FISTAtvlambda'])
         form.addParam('FISTAtviter',
                       IntParam,
                       condition='family==%d and varMethod==%d' % (self.FAMILY_VARIATIONAL, self.FISTA),
                       default=50,
                       label='TV iterations',
-                      help='Num')
+                      help=FISTAhelps['FISTAtviter'])
 
     def _defineSARTTVParams(self, form):
         form.addParam('SARTTViter',
@@ -463,23 +545,16 @@ class ProtTigreForm(ProtTomoBase):
                       condition='family==%d and varMethod==%d' % (self.FAMILY_VARIATIONAL, self.SARTTV),
                       default=30,
                       label='Iterations',
-                      help='N')
+                      help=SARTTVhelps['SARTTViter'])
         form.addParam('SARTTVtvlambda',
                       FloatParam,
                       condition='family==%d and varMethod==%d' % (self.FAMILY_VARIATIONAL, self.SARTTV),
                       default=50,
                       label='TV Regularizer',
-                      help='Num')
+                      help=SARTTVhelps['SARTTVtvlambda'])
         form.addParam('SARTTVtviter',
                       IntParam,
                       condition='family==%d and varMethod==%d' % (self.FAMILY_VARIATIONAL, self.SARTTV),
                       default=50,
                       label='TV iterations',
-                      help='Num')
-        form.addParam('SARTTValphared',
-                      FloatParam,
-                      expertLevel=LEVEL_ADVANCED,
-                      condition='family==%d and varMethod==%d' % (self.FAMILY_VARIATIONAL, self.SARTTV),
-                      default=0.95,
-                      label='alpha red',
-                      help='Num')
+                      help=SARTTVhelps['SARTTVtviter'])
