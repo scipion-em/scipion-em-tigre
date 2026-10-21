@@ -29,7 +29,6 @@ from pyworkflow.tests import BaseTest, setupTestProject
 from pyworkflow.tests import DataSet
 
 import tomo
-from pyworkflow.utils import weakImport
 from tomo.tests import RE4_STA_TUTO
 from tigre.protocols.protocol_tigre_denoising_tv import ProtTigreDenoisingTV, OUTPUT_TOMOGRAMS_NAME
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer

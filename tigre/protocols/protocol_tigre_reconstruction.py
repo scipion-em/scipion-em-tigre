@@ -30,15 +30,14 @@ from enum import Enum
 import pyworkflow.utils as pwutils
 from pyworkflow import VERSION_3_0
 from pyworkflow.object import Set
-from pyworkflow.protocol.params import (PointerParam, IntParam, FloatParam, BooleanParam, LabelParam, EnumParam, StringParam, LEVEL_ADVANCED, GPU_LIST)
+from pyworkflow.protocol.params import (PointerParam, IntParam, BooleanParam, StringParam, LEVEL_ADVANCED, GPU_LIST)
 import pyworkflow.utils.path as path
 from .protocol_tigre_reconstruction_base import ProtTigreForm
 
 from pwem.protocols import EMProtocol
 import pwem.emlib.metadata as md
 
-from tomo.protocols.protocol_base import ProtTomoBase
-from tomo.objects import Tomogram, SetOfTomograms, SetOfTiltSeries
+from tomo.objects import Tomogram, SetOfTomograms
 from pyworkflow import BETA
 from tigre import Plugin
 
@@ -273,9 +272,6 @@ class ProtTigreReconstruction(EMProtocol, ProtTigreForm):
 
 
     def reconstructTomogramStep(self, tsId):
-        """
-        This function computes the reconstructed tomogram
-        """
         ts = self.inputSetOfTiltSeries.get()[{'_tsId': tsId}]
 
         # Defining the output folder
